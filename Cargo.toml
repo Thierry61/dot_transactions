@@ -1,0 +1,11 @@
+[package]
+name = "dot-transactions"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.93"
+clap = { version = "4.5.20", features = ["derive"] }
+chrono = "0.4.40"
+nom = "8.0.0"
+nom-language = "0.1.0"
