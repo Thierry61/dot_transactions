@@ -2,7 +2,10 @@ use crate::{ParsedContent, SAT_FRACTION, Sat, Transaction};
 
 use anyhow::{Context, Result, bail};
 use chrono::NaiveDate;
-use std::{cmp::max, collections::BTreeMap};
+use std::{
+    cmp::{max, min},
+    collections::BTreeMap,
+};
 
 // Format amount on 13 characters padded on left with blanks and on right with 0s
 // It is expressed in sats with possibly:
@@ -58,23 +61,38 @@ fn test_format_amount() {
 }
 
 // Wallet balance structure
-#[derive(Default)]
 struct Balance {
     // Wallet balance
     bal: Sat,
+    // Minimum date of all transactions impacting the wallet
+    min_date: NaiveDate,
     // Maximum date of all transactions impacting the wallet
     max_date: NaiveDate,
+}
+
+// Default trait implemented manually because min_date is initialized with max possible date
+impl Default for Balance {
+    fn default() -> Self {
+        Self {
+            bal: 0,
+            min_date: NaiveDate::MAX,
+            max_date: NaiveDate::MIN,
+        }
+    }
 }
 
 // Print balances
 fn print_balances(fraction: u8, len: usize, header: &str, vec: &mut Vec<(&&str, &Balance)>) {
     if len != 0 {
         println!("{header}:");
-        // Sort by max date
-        vec.sort_by(|a, b| a.1.max_date.cmp(&b.1.max_date));
+        // Sort by min date
+        vec.sort_by(|a, b| a.1.min_date.cmp(&b.1.min_date));
         for (n, bal) in vec {
             let amount = format_amount(fraction, bal.bal);
-            println!("\t{n:<len$}: {amount} <= {}", bal.max_date);
+            println!(
+                "\t{n:<len$}: {amount} - [{} .. {}]",
+                bal.min_date, bal.max_date
+            );
         }
         println!();
     }
@@ -158,6 +176,7 @@ pub fn sum_wallets(fraction: u8, parsed_content: &ParsedContent) -> Result<()> {
             if let Some(&p) = merged_wallets.get(n) {
                 if let Some(old_bal) = merged_balances.get_mut(p) {
                     old_bal.bal += amount;
+                    old_bal.min_date = min(old_bal.min_date, t.date);
                     old_bal.max_date = max(old_bal.max_date, t.date);
                     if !is_output && amount == 0 {
                         // This a batched input so memorize wallet name
@@ -171,6 +190,7 @@ pub fn sum_wallets(fraction: u8, parsed_content: &ParsedContent) -> Result<()> {
                 }
             } else if let Some(old_bal) = regular_balances.get_mut(n) {
                 old_bal.bal += amount;
+                old_bal.min_date = min(old_bal.min_date, t.date);
                 old_bal.max_date = max(old_bal.max_date, t.date);
                 if !is_output && amount == 0 {
                     // This a batched input so memorize wallet name
@@ -188,12 +208,14 @@ pub fn sum_wallets(fraction: u8, parsed_content: &ParsedContent) -> Result<()> {
                 if external_wallet.is_merged {
                     if let Some(old_bal) = merged_balances.get_mut(external_name) {
                         old_bal.bal -= amount;
+                        old_bal.min_date = min(old_bal.min_date, t.date);
                         old_bal.max_date = max(old_bal.max_date, t.date);
                     } else {
                         bail!("Undefined merged external wallet '{external_name}'")
                     }
                 } else if let Some(old_bal) = regular_balances.get_mut(external_name) {
                     old_bal.bal -= amount;
+                    old_bal.min_date = min(old_bal.min_date, t.date);
                     old_bal.max_date = max(old_bal.max_date, t.date);
                 } else {
                     bail!("Undefined regular external wallet '{external_name}'")
@@ -202,7 +224,7 @@ pub fn sum_wallets(fraction: u8, parsed_content: &ParsedContent) -> Result<()> {
         }
     }
 
-    // Store wallet balances in mutable vectors so that they can be reordered by max_date
+    // Store wallet balances in mutable vectors so that they can be reordered by min_date
     let mut vec1: Vec<_> = merged_balances
         .iter()
         .filter(|(n, _)| !n.contains("->"))

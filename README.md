@@ -36,6 +36,7 @@ This is large enough to express:
 
 List wallets and generate for each wallet:
 - its final balance
+- the minimum date of all transactions impacting the wallet
 - the maximum date of all transactions impacting the wallet
 
 Wallets are grouped under 3 categories:
