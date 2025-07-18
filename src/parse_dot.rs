@@ -1,3 +1,6 @@
+#[cfg(test)]
+use crate::SAT_FRACTION;
+
 use crate::{Addresses, ParsedContent, PartialScriptElements, Sat, Secondary, Transaction, Wallet};
 
 use chrono::NaiveDate;
@@ -135,13 +138,25 @@ fn gen_parse_amount(fraction: u8) -> impl FnMut(&str) -> IResult<&str, Sat, Verb
 
 #[test]
 fn test_parse_amount() {
-    assert_eq!(parse_amount(8, "0.1|"), Ok(("|", 1000_0000)));
+    assert_eq!(parse_amount(SAT_FRACTION, "0.1|"), Ok(("|", 1000_0000)));
     assert_eq!(parse_amount(2, "0.1|"), Ok(("|", 10)));
-    assert_eq!(gen_parse_amount(8)("1.2|"), Ok(("|", 1_2000_0000)));
-    assert_eq!(parse_amount(8, "2.03}"), Ok(("}", 2_0300_0000)));
-    assert_eq!(parse_amount(8, "31.0041"), Ok(("", 31_0041_0000)));
-    assert_eq!(parse_amount(8, "42.000052"), Ok(("", 42_0000_5200)));
-    assert_eq!(gen_parse_amount(8)("53.00000063"), Ok(("", 53_0000_0063)));
+    assert_eq!(
+        gen_parse_amount(SAT_FRACTION)("1.2|"),
+        Ok(("|", 1_2000_0000))
+    );
+    assert_eq!(parse_amount(SAT_FRACTION, "2.03}"), Ok(("}", 2_0300_0000)));
+    assert_eq!(
+        parse_amount(SAT_FRACTION, "31.0041"),
+        Ok(("", 31_0041_0000))
+    );
+    assert_eq!(
+        parse_amount(SAT_FRACTION, "42.000052"),
+        Ok(("", 42_0000_5200))
+    );
+    assert_eq!(
+        gen_parse_amount(SAT_FRACTION)("53.00000063"),
+        Ok(("", 53_0000_0063))
+    );
 }
 
 // Parse header in label. It can be either:
@@ -172,11 +187,11 @@ fn parse_header(
 #[test]
 fn test_parse_header() {
     assert_eq!(
-        parse_header(8, "25-04-2025|"),
+        parse_header(SAT_FRACTION, "25-04-2025|"),
         Ok(("|", (NaiveDate::from_ymd_opt(2025, 4, 25).unwrap(), None)))
     );
     assert_eq!(
-        parse_header(8, "{25-04-2025|0.00001}|"),
+        parse_header(SAT_FRACTION, "{25-04-2025|0.00001}|"),
         Ok((
             "|",
             (NaiveDate::from_ymd_opt(2025, 4, 25).unwrap(), Some(1000))
@@ -247,24 +262,30 @@ fn parse_cell(fraction: u8, input: &str) -> IResult<&str, RowCell, VerboseError<
 #[test]
 fn test_parse_cell() {
     assert_eq!(
-        parse_cell(8, "{<in0> 1.2|"),
+        parse_cell(SAT_FRACTION, "{<in0> 1.2|"),
         Ok(("|", RowCell::PortAndAmount(("in0", 1_2000_0000))))
     );
-    assert_eq!(parse_cell(8, "{&nbsp;|"), Ok(("|", RowCell::Empty)));
+    assert_eq!(
+        parse_cell(SAT_FRACTION, "{&nbsp;|"),
+        Ok(("|", RowCell::Empty))
+    );
     assert_eq!(
         parse_cell(
-            8,
+            SAT_FRACTION,
             "{&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|"
         ),
         Ok(("|", RowCell::Empty))
     );
     assert_eq!(
-        parse_cell(8, "|<out1> 1.00002}"),
+        parse_cell(SAT_FRACTION, "|<out1> 1.00002}"),
         Ok(("", RowCell::PortAndAmount(("out1", 1_0000_2000))))
     );
-    assert_eq!(parse_cell(8, "|0.00002003}"), Ok(("", RowCell::Fees(2003))));
     assert_eq!(
-        parse_cell(8, "{0.00002003|345678901234567"),
+        parse_cell(SAT_FRACTION, "|0.00002003}"),
+        Ok(("", RowCell::Fees(2003)))
+    );
+    assert_eq!(
+        parse_cell(SAT_FRACTION, "{0.00002003|345678901234567"),
         Err(nom::Err::Error(VerboseError {
             errors: vec![(
                 "{0.00002003|3456789012345",
@@ -374,13 +395,16 @@ fn test_parse_transaction_label() {
         vec![("out0", 200_0000), ("out1", 300_0000), ("out2", 500_0000)],
     );
     assert_eq!(
-        parse_transaction_label(8, input1),
+        parse_transaction_label(SAT_FRACTION, input1),
         Ok(("", common_res.clone()))
     );
-    assert_eq!(parse_transaction_label(8, input2), Ok(("", common_res)));
+    assert_eq!(
+        parse_transaction_label(SAT_FRACTION, input2),
+        Ok(("", common_res))
+    );
     assert_eq!(
         parse_transaction_label(
-            8,
+            SAT_FRACTION,
             "\"{19-05-2019|0.0001}|{<in0> 0.01|<out0> 0.02}|{<in1> 0.01|0.0001}\""
         ),
         Err(nom::Err::Error(VerboseError {
@@ -391,7 +415,7 @@ fn test_parse_transaction_label() {
         }))
     );
     assert_eq!(
-        parse_transaction_label(8, "\"19-05-2019|{<in0> 0.01|<out0> 0.01}\""),
+        parse_transaction_label(SAT_FRACTION, "\"19-05-2019|{<in0> 0.01|<out0> 0.01}\""),
         Err(nom::Err::Error(VerboseError {
             errors: vec![(
                 "\"19-05-2019|{<in0> 0.01|<",
@@ -581,7 +605,29 @@ fn test_parse_transaction() {
             ("Blockchain mobile", "r1", 142933),
         ],
     };
-    assert_eq!(parse_transaction(8, input, name), Ok(("", output)));
+    assert_eq!(
+        parse_transaction(SAT_FRACTION, input, name),
+        Ok(("", output))
+    );
+}
+
+// Like delimited parser but include delimiters in the result
+fn my_delimited<'a>(
+    begin: &'a str,
+    end: &'a str,
+    input: &'a str,
+) -> IResult<&'a str, &'a str, VerboseError<&'a str>> {
+    let (final_input, (res1, res2, res3)) =
+        (tag(begin), take_until(end), tag(end)).parse_complete(input)?;
+    Ok((final_input, &input[..res1.len() + res2.len() + res3.len()]))
+}
+
+// Generate my delimited parser (closure capturing begin and end parameters)
+fn gen_my_delimited<'a>(
+    begin: &'a str,
+    end: &'a str,
+) -> impl FnMut(&'a str) -> IResult<&'a str, &'a str, VerboseError<&'a str>> {
+    move |input: &str| my_delimited(begin, end, input)
 }
 
 // Parse label string and generate an address vector
@@ -605,11 +651,8 @@ fn parse_wallet_label(input: &str) -> IResult<&str, Addresses, VerboseError<&str
                     delimited(tag("|<"), alphanumeric1, tag(">")).parse_complete(input)?;
                 let (input, _) = multispace1(input)?;
                 // Real address or any expression between parenthesis, like: (batched transactions)
-                let (input, address) = alt((
-                    alphanumeric1,
-                    delimited(tag("("), take_until(")"), tag(")")),
-                ))
-                .parse_complete(input)?;
+                let (input, address) =
+                    alt((alphanumeric1, gen_my_delimited("(", ")"))).parse_complete(input)?;
                 if addresses.insert(port, address).is_some() {
                     let err = generate_error(input, "duplicate port in wallet label");
                     return Err(nom::Err::Error(err));
@@ -822,7 +865,7 @@ digraph g {
 }
 "#;
     assert_eq!(
-        parse_next_element(8, input),
+        parse_next_element(SAT_FRACTION, input),
         Ok(("", DotElement::EndOfInput))
     );
 }
@@ -928,5 +971,5 @@ fn test_parse_dot_file() {
     };
 
     // unwrap needed because anyhow::Error doesn't implement PartialEq
-    assert_eq!(parse_dot_file(8, input).unwrap(), output);
+    assert_eq!(parse_dot_file(SAT_FRACTION, input).unwrap(), output);
 }

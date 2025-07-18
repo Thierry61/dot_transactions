@@ -1,4 +1,4 @@
-use crate::{ParsedContent, Sat, Transaction};
+use crate::{ParsedContent, SAT_FRACTION, Sat, Transaction};
 
 use anyhow::{Context, Result, bail};
 use chrono::NaiveDate;
@@ -13,16 +13,19 @@ fn format_amount(fraction: u8, amount: Sat) -> String {
     let amount = amount.abs();
     let sats = format!("{amount}");
     let len = sats.len();
-    let fraction = fraction as usize;
     // Possibly add . separator
-    let res = if len > fraction {
-        format!("{}.{}", &sats[..len - fraction], &sats[len - fraction..])
+    let res = if len > fraction as usize {
+        format!(
+            "{}.{}",
+            &sats[..len - fraction as usize],
+            &sats[len - fraction as usize..]
+        )
     } else {
         sats
     };
     // Possibly add _ at the 5th decimal of bitcoin amount (equivalent to 1€ in july 2025)
     const SEPA_POSITION: usize = 3;
-    let res = if fraction == 8 && res.len() > SEPA_POSITION {
+    let res = if fraction == SAT_FRACTION && res.len() > SEPA_POSITION {
         let len = res.len();
         format!(
             "{}_{}",
@@ -38,20 +41,20 @@ fn format_amount(fraction: u8, amount: Sat) -> String {
 
 #[test]
 fn test_format_amount() {
-    assert_eq!(format_amount(8, 9912345678), " 99.12345_678");
-    assert_eq!(format_amount(8, 912345678), "  9.12345_678");
-    assert_eq!(format_amount(8, 12345678), "    12345_678");
-    assert_eq!(format_amount(8, 45678), "       45_678");
-    assert_eq!(format_amount(8, 5678), "        5_678");
-    assert_eq!(format_amount(8, 678), "          678");
-    assert_eq!(format_amount(8, 8), "            8");
-    assert_eq!(format_amount(8, -9912345678), "-99.12345_678");
-    assert_eq!(format_amount(8, -912345678), " -9.12345_678");
-    assert_eq!(format_amount(8, -12345678), "   -12345_678");
-    assert_eq!(format_amount(8, -45678), "      -45_678");
-    assert_eq!(format_amount(8, -5678), "       -5_678");
-    assert_eq!(format_amount(8, -678), "         -678");
-    assert_eq!(format_amount(8, -8), "           -8");
+    assert_eq!(format_amount(SAT_FRACTION, 9912345678), " 99.12345_678");
+    assert_eq!(format_amount(SAT_FRACTION, 912345678), "  9.12345_678");
+    assert_eq!(format_amount(SAT_FRACTION, 12345678), "    12345_678");
+    assert_eq!(format_amount(SAT_FRACTION, 45678), "       45_678");
+    assert_eq!(format_amount(SAT_FRACTION, 5678), "        5_678");
+    assert_eq!(format_amount(SAT_FRACTION, 678), "          678");
+    assert_eq!(format_amount(SAT_FRACTION, 8), "            8");
+    assert_eq!(format_amount(SAT_FRACTION, -9912345678), "-99.12345_678");
+    assert_eq!(format_amount(SAT_FRACTION, -912345678), " -9.12345_678");
+    assert_eq!(format_amount(SAT_FRACTION, -12345678), "   -12345_678");
+    assert_eq!(format_amount(SAT_FRACTION, -45678), "      -45_678");
+    assert_eq!(format_amount(SAT_FRACTION, -5678), "       -5_678");
+    assert_eq!(format_amount(SAT_FRACTION, -678), "         -678");
+    assert_eq!(format_amount(SAT_FRACTION, -8), "           -8");
 }
 
 // Wallet balance structure

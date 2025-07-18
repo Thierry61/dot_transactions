@@ -8,6 +8,7 @@ Analyze wallets and transactions defined in a [Graphviz dot](https://graphviz.or
 ```
   sum      Compute wallets balances
   analyze  Analyze a specific wallet / port
+  check    Check transactions and wallets
   help     Print this message or the help of the given subcommand(s)
 ```
 **<u>Arguments:</u>**
@@ -60,5 +61,17 @@ This command has 2 additional options:
 
 `-w/--wallet` indicates the name of the wallet to be analyzed and `-p/--port` (optional) limits
 analysis to the single address specified by the port identifier.
+
+# check command
+
+Check that all transactions and wallets defined in the dot file are correct
+(transactions, addresses and amounts exist in the bitcoin blockchain).
+
+This command has an additional option:
+```
+-u, --url <URL>  Base url of bitcoin explorer API, for example: http://127.0.0.1/api/tx/
+```
+
+`-u, --url` specifies the url of the bitcoin explorer (preferably your own for better privacy).
 
 TODO: describe the dot file syntax to define wallets and transactions.

@@ -9,6 +9,13 @@ use parse_dot::parse_dot_file;
 mod wallets;
 use wallets::{analyze_wallet, sum_wallets};
 
+mod check;
+use check::check;
+
+// Default number of fractional digits (adapted to bitcoin network)
+const SAT_FRACTION_STR: &str = "8";
+const SAT_FRACTION: u8 = 8;
+
 /// Analyze wallets and transactions defined in a .dot file
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -17,7 +24,7 @@ struct Cli {
     r#in: PathBuf,
 
     /// Number of fractional digits
-    #[arg(short, long, default_value("8"))]
+    #[arg(short, long, default_value(SAT_FRACTION_STR))]
     fraction: u8,
 
     #[command(subcommand)]
@@ -38,6 +45,14 @@ enum Commands {
         /// Port identifier or *
         #[arg(short, long, default_value("*"))]
         port: String,
+    },
+
+    /// Check transactions and wallets
+    Check {
+        /// Base url of bitcoin explorer API,
+        /// for example: http://127.0.0.1/api/tx/
+        #[arg(short, long)]
+        url: String,
     },
 }
 
@@ -80,7 +95,7 @@ struct Secondary<'a> {
 }
 
 /// Wallet structure.
-/// Note that its name is not inside the structure but is the key of the structure in a BTreeMap.
+/// Note that the wallet name is not inside the structure but is the key of the structure in a BTreeMap.
 #[derive(Debug, Default, PartialEq)]
 struct Wallet<'a> {
     /// Addresses (list of (wallet port, address) pairs)
@@ -139,6 +154,10 @@ fn main() -> Result<()> {
         Commands::Analyze { wallet, port } => {
             // Analyze a specific port or all ports of a wallet
             analyze_wallet(cli.fraction, &res, wallet, port)?;
+        }
+        Commands::Check { url } => {
+            // Check transactions and wallets
+            check(cli.fraction, &res, url)?;
         }
     }
 
