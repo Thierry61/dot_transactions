@@ -89,10 +89,13 @@ fn print_balances(fraction: u8, len: usize, header: &str, vec: &mut Vec<(&&str, 
         vec.sort_by(|a, b| a.1.min_date.cmp(&b.1.min_date));
         for (n, bal) in vec {
             let amount = format_amount(fraction, bal.bal);
-            println!(
-                "\t{n:<len$}: {amount} - [{} .. {}]",
-                bal.min_date, bal.max_date
-            );
+            // Print only one date when min date = max date
+            let bal = if bal.min_date == bal.max_date {
+                format!("[{}]", bal.min_date)
+            } else {
+                format!("[{} .. {}]", bal.min_date, bal.max_date)
+            };
+            println!("\t{n:<len$}: {amount} - {bal}");
         }
         println!();
     }

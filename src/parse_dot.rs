@@ -212,7 +212,7 @@ enum RowCell<'a> {
     // Fees cell (only possible in output cell)
     Fees(Sat),
 }
-fn parse_cell(fraction: u8, input: &str) -> IResult<&str, RowCell, VerboseError<&str>> {
+fn parse_cell(fraction: u8, input: &str) -> IResult<&str, RowCell<'_>, VerboseError<&str>> {
     let orig_input = input;
     // Input cell begins with '{', output cell begins with '|'
     let (input, first_char) = one_of("|{").parse_complete(input)?;
@@ -300,8 +300,16 @@ fn test_parse_cell() {
 fn parse_transaction_label(
     fraction: u8,
     input: &str,
-) -> IResult<&str, (NaiveDate, Sat, PartialScriptElements, PartialScriptElements), VerboseError<&str>>
-{
+) -> IResult<
+    &str,
+    (
+        NaiveDate,
+        Sat,
+        PartialScriptElements<'_>,
+        PartialScriptElements<'_>,
+    ),
+    VerboseError<&str>,
+> {
     let orig_input = input;
     let mut inputs = Vec::new();
     let mut outputs = Vec::new();
@@ -631,7 +639,7 @@ fn gen_my_delimited<'a>(
 }
 
 // Parse label string and generate an address vector
-fn parse_wallet_label(input: &str) -> IResult<&str, Addresses, VerboseError<&str>> {
+fn parse_wallet_label(input: &str) -> IResult<&str, Addresses<'_>, VerboseError<&str>> {
     // Wallet name in label is ignored (though is the one displayed in dot diagram)
     let (input, _) = tag("\"").parse_complete(input)?;
     let (input, _) = take_until("|")(input)?;
@@ -673,7 +681,7 @@ fn parse_wallet_label(input: &str) -> IResult<&str, Addresses, VerboseError<&str
 
 // Parse wallet definition
 // It consist of [ color = ... fontcolor = ... tooltip = ... label = ... ] structure
-fn parse_wallet(input: &str) -> IResult<&str, Wallet, VerboseError<&str>> {
+fn parse_wallet(input: &str) -> IResult<&str, Wallet<'_>, VerboseError<&str>> {
     let (input, _) = tag("[").parse_complete(input)?;
 
     // Get color, fontcolor and tooltip parameters (but ignore them)
@@ -747,7 +755,10 @@ enum DotElement<'a> {
 }
 
 // Parse a single interpreted dot element
-fn parse_next_element(fraction: u8, input: &str) -> IResult<&str, DotElement, VerboseError<&str>> {
+fn parse_next_element(
+    fraction: u8,
+    input: &str,
+) -> IResult<&str, DotElement<'_>, VerboseError<&str>> {
     let mut running_input = input;
     loop {
         let (input, _) = multispace0(running_input)?;
@@ -871,7 +882,7 @@ digraph g {
 }
 
 // Parse whole dot file
-pub fn parse_dot_file(fraction: u8, input: &str) -> anyhow::Result<ParsedContent> {
+pub fn parse_dot_file(fraction: u8, input: &str) -> anyhow::Result<ParsedContent<'_>> {
     let mut running_input = input;
     let mut res = ParsedContent::default();
 
